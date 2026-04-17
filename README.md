@@ -422,3 +422,4 @@ MIT License - voir [LICENSE](./LICENSE) pour détails
 **Dernière mise à jour** : 2024-04-17
 **Mainteneur** : DevSecOps Team
 # test pipeline
+test ci
