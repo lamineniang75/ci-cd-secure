@@ -424,3 +424,4 @@ MIT License - voir [LICENSE](./LICENSE) pour détails
 # test pipeline
 test ci
 trigger pipeline
+trigger ci test
