@@ -1,0 +1,75 @@
+# ============================================================================
+# FICHIER: .flake8
+# DESCRIPTION: Configuration Flake8 pour linting et conventions de code
+# ============================================================================
+[flake8]
+# Sélection des erreurs
+# E = erreurs de syntaxe
+# W = avertissements
+# C = complexité
+# F = erreurs Pyflakes
+# N = conventions de nommage (pep8-naming)
+select = E, W, F, N
+
+# Exclure les erreurs spécifiques
+ignore = 
+    E501,    # Line too long (géré par Black)
+    W503,    # Line break before binary operator
+    W504,    # Line break after binary operator
+    C901,    # Function is too complex
+    E203,    # Whitespace before ':'
+    E704,    # Multiple statements on one line
+
+# Répertoires à exclure
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    .eggs,
+    *.egg,
+    build,
+    dist,
+    .tox,
+    .pytest_cache,
+    .mypy_cache,
+    htmlcov,
+    migrations,
+    node_modules
+
+# Complexité cyclomatique maximale
+max-complexity = 10
+
+# Longueur maximale des lignes (géré par Black : 88 caractères)
+max-line-length = 127
+
+# Noms de projets spécifiques (pour les imports)
+# application-import-names = myapp
+
+# Importer ordre
+# Utilise isort pour la gestion
+import-order-style = smarrt
+
+# Plugins additionnels
+# pip install flake8-docstrings flake8-bugbear flake8-comprehensions
+
+# Docstring format
+docstring-convention = google
+
+# Statistiques détaillées
+statistics = True
+
+# Afficher les numéros de ligne pour les erreurs
+show-source = True
+
+# Format de sortie personnalisé
+# Format: %(path)s:%(row)d:%(col)d: %(code)s %(text)s
+
+# ============================================================================
+# UTILISATION
+# ============================================================================
+# flake8 .                              # Analyser le répertoire courant
+# flake8 src/                           # Analyser un répertoire spécifique
+# flake8 --max-line-length=100 .        # Redéfinir la longueur max
+# flake8 --extend-ignore=E501,W503 .    # Ajouter des ignorances
+# ============================================================================

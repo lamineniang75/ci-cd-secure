@@ -1,0 +1,201 @@
+# ============================================================================
+# FICHIER: .pre-commit-config.yaml
+# DESCRIPTION: Configuration pre-commit hooks (tests avant commit)
+# UTILISATION: 
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit run --all-files
+# ============================================================================
+
+repos:
+  # =========================================================================
+  # GIT & FILES
+  # =========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Déterminer le type de fichier
+      - id: check-yaml
+        args: ['--unsafe']
+      
+      # Vérifier les JSON
+      - id: check-json
+      
+      # Vérifier les TOML
+      - id: check-toml
+      
+      # Finales de ligne
+      - id: end-of-file-fixer
+      
+      # Trailing whitespace
+      - id: trailing-whitespace
+      
+      # Vérifier les fichiers volumineux
+      - id: check-large-files
+        args: ['--maxkb=1000']
+      
+      # Vérifier les fichiers binaires
+      - id: check-binary-file-is-not-included
+      
+      # Vérifier les fichiers fusionnés
+      - id: check-merge-conflict
+      
+      # Vérifier les syntaxes XML
+      - id: check-xml
+      
+      # Vérifier les docstrings en Python
+      - id: name-tests-test
+        args: ['--pytest-test-first']
+
+  # =========================================================================
+  # SECRET SCANNING
+  # =========================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline', '--allow-multiple-files']
+        exclude: ^(docs/|tests/|.*\.md)$
+
+  # =========================================================================
+  # PYTHON CODE FORMATTING
+  # =========================================================================
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: ['--line-length=88']
+
+  # =========================================================================
+  # PYTHON IMPORT SORTING
+  # =========================================================================
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile', 'black', '--line-length', '88']
+
+  # =========================================================================
+  # PYTHON LINTING (PEP 8)
+  # =========================================================================
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=88', '--extend-ignore=E203,W503']
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-docstrings
+
+  # =========================================================================
+  # PYTHON SECURITY LINTING (Bandit)
+  # =========================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-c', '.bandit', '-r', 'src/', 'tests/']
+        exclude: ^tests/
+
+  # =========================================================================
+  # PYTHON TYPE CHECKING (mypy)
+  # =========================================================================
+  # Décommenter pour activer
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.7.1
+  #   hooks:
+  #     - id: mypy
+  #       args: ['--strict', '--no-error-summary']
+  #       additional_dependencies: ['types-all']
+  #       exclude: ^tests/
+
+  # =========================================================================
+  # MARKDOWN & DOCUMENTATION
+  # =========================================================================
+  - repo: https://github.com/markdownlint/markdownlint
+    rev: v0.12.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+        exclude: ^docs/
+
+  # =========================================================================
+  # YAML LINTING
+  # =========================================================================
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-d', '{rules: {line-length: {max: 120}}}']
+
+  # =========================================================================
+  # DOCKERFILE LINTING (optionnel)
+  # =========================================================================
+  # - repo: https://github.com/hadolint/hadolint
+  #   rev: v2.13.0
+  #   hooks:
+  #     - id: hadolint-docker
+
+  # =========================================================================
+  # COMMIT MESSAGE LINTING
+  # =========================================================================
+  # Format recommandé:
+  # <type>(<scope>): <subject>
+  # <body>
+  # <footer>
+  #
+  # Types: feat, fix, docs, style, refactor, perf, test, ci, chore
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --force-atomic
+
+# ============================================================================
+# CONFIGURATION GÉNÉRALE
+# ============================================================================
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    venv/|
+    .venv/|
+    env/|
+    migrations/|
+    __pycache__|
+    node_modules/|
+    .tox/|
+    htmlcov/
+  )
+
+# Fail fast on first error
+fail_fast: false
+
+# Timeout (secondes)
+default_stages: [commit]
+
+# ============================================================================
+# UTILISATION
+# ============================================================================
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Exécution manuelle:
+#   pre-commit run --all-files         # Tous les fichiers
+#   pre-commit run --files *.py        # Fichiers spécifiques
+#   pre-commit autoupdate              # Mettre à jour les repos
+#
+# Bypass (optionnel, à éviter!):
+#   git commit --no-verify
+#
+# Tips:
+#   - Les hooks s'exécutent AVANT le commit
+#   - Si un hook échoue, le commit est bloqué
+#   - Certains hooks auto-fix (black, isort) - vérifier les changes
+#   - Ajouter les fichiers modifiés: git add <file>
+#   - Recommencer le commit: git commit

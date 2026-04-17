@@ -1,0 +1,148 @@
+# ============================================================================
+# FICHIER: .github/dependabot.yml
+# DESCRIPTION: Configuration automatique des mises à jour de dépendances
+# ============================================================================
+version: 2
+
+# =========================================================================
+# UPDATES - Gestion automatique des dépendances Python
+# =========================================================================
+updates:
+  # =========================================================================
+  # 1. DÉPENDANCES PYTHON (pip)
+  # =========================================================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+    
+    # Grouper les mises à jour pour réduire les PRs
+    groups:
+      development-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+      security-updates:
+        patterns:
+          - "*security*"
+          - "*cryptography*"
+          - "*jinja*"
+    
+    # Propriétés des Pull Requests
+    pull-request-branch-name:
+      separator: "/"  # dependabot/pip/requests-upgrade
+    
+    reviewers:
+      - "security-team"
+      - "devops-team"
+    
+    assignees:
+      - "tech-lead"
+    
+    labels:
+      - "dependencies"
+      - "python"
+      - "automation"
+    
+    # Paramètres de mise à jour
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    
+    rebase-strategy: "auto"
+    automerge-strategy: "auto"
+    automerge-type: "all"  # Merge automatiquement les mises à jour
+    
+    # Filtre les versions
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    
+    # Ignore les versions majeures pour les dépendances non-critiques
+    ignore:
+      # Exemple : si une dépendance pose problème
+      # - dependency-name: "problematic-package"
+      #   versions: ["1.0.0"]
+    
+    # Limite le nombre de PRs ouvertes
+    open-pull-requests-limit: 10
+    
+    # Insécurité avant mise à jour
+    vulnerability-alerts: true
+
+  # =========================================================================
+  # 2. DÉPENDANCES GITHUB ACTIONS
+  # =========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    
+    groups:
+      actions:
+        patterns:
+          - "*"
+    
+    reviewers:
+      - "devops-team"
+    
+    assignees:
+      - "tech-lead"
+    
+    labels:
+      - "ci-cd"
+      - "github-actions"
+      - "dependencies"
+    
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    
+    rebase-strategy: "auto"
+    
+    # Actions : mises à jour de correctifs automatiques
+    open-pull-requests-limit: 5
+    
+    allow:
+      - dependency-type: "direct"
+
+  # =========================================================================
+  # 3. DOCKER (optionnel, si vous utilisez des images Docker)
+  # =========================================================================
+  # Décommenter si vous avez des Dockerfiles
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "tuesday"
+  #     time: "03:00"
+  #   reviewers:
+  #     - "security-team"
+  #   labels:
+  #     - "docker"
+  #     - "dependencies"
+
+# ============================================================================
+# CONFIGURATION MANUELLE RECOMMANDÉE
+# ============================================================================
+# Après activation, vous devez :
+#
+# 1. Configurer les permissions dans Settings > Code security and analysis
+# 2. Activer "Dependency graph" et "Dependabot alerts"
+# 3. Créer un team "security-team" et "devops-team" pour les reviewers
+# 4. Configurer les règles de merge automatique dans Settings > Branch protection
+#
+# Exemple de règle de protection de branche (main) :
+# - Require pull request reviews before merging
+# - Dismiss stale pull request approvals
+# - Require status checks to pass before merging
+# - Require branches to be up to date before merging
+# - Require code owner reviews (optionnel)
+# - Require conversation resolution before merging
+# ============================================================================

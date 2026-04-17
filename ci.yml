@@ -1,0 +1,510 @@
+name: CI - Build & Test Python Application
+
+# ============================================================================
+# DÉCLENCHEMENT DU PIPELINE
+# ============================================================================
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# ============================================================================
+# PERMISSIONS MINIMALES (Principle of Least Privilege)
+# ============================================================================
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+# ============================================================================
+# VARIABLES GLOBALES
+# ============================================================================
+env:
+  PYTHON_VERSION: '3.11'
+  PIP_CACHE_DIR: ~/.cache/pip
+  ARTIFACT_RETENTION_DAYS: 30
+
+jobs:
+  # =========================================================================
+  # JOB 1: PRÉPARATION ET VALIDATIONS INITIALES
+  # =========================================================================
+  setup:
+    name: Setup & Validate Repository
+    runs-on: ubuntu-latest
+    outputs:
+      python-version: ${{ steps.set-version.outputs.python-version }}
+      artifact-name: python-app-${{ github.run_id }}
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important pour les analyses de sécurité
+          
+      - name: 🔍 Set Python Version
+        id: set-version
+        run: echo "python-version=${{ env.PYTHON_VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: 📋 Validate Repository Structure
+        run: |
+          echo "✅ Validating project structure..."
+          test -f requirements.txt || test -f pyproject.toml || (echo "❌ Missing dependencies file" && exit 1)
+          test -f README.md && echo "✅ README.md found" || echo "⚠️  No README.md"
+          test -d tests || echo "⚠️  No tests directory found"
+
+      - name: 📊 Display Environment Info
+        run: |
+          echo "========== ENVIRONMENT INFO =========="
+          echo "GitHub Actor: ${{ github.actor }}"
+          echo "GitHub Repository: ${{ github.repository }}"
+          echo "GitHub Ref: ${{ github.ref }}"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "======================================="
+
+  # =========================================================================
+  # JOB 2: BUILD, TESTS UNITAIRES ET LINTING
+  # =========================================================================
+  build-and-test:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'  # Utilise le cache pip automatique
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt || pip install -e .
+          pip install -r requirements-dev.txt 2>/dev/null || true
+
+      - name: 🎨 Code Linting (flake8)
+        continue-on-error: false
+        run: |
+          pip install flake8
+          echo "🔍 Checking code quality with flake8..."
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: 🎯 Code Formatting Check (Black)
+        continue-on-error: true
+        run: |
+          pip install black
+          echo "🔍 Checking code formatting with Black..."
+          black --check . || echo "⚠️  Some files need formatting (run 'black .')"
+
+      - name: 📐 Static Analysis (Pylint)
+        continue-on-error: true
+        run: |
+          pip install pylint
+          echo "🔍 Running Pylint analysis..."
+          pylint --rcfile=.pylintrc src/ tests/ 2>/dev/null || true
+
+      - name: 🧪 Run Unit Tests (pytest)
+        continue-on-error: false
+        run: |
+          pip install pytest pytest-cov pytest-xdist
+          echo "▶️  Running unit tests with coverage..."
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=html --cov-report=term --junit-xml=test-results.xml || exit 1
+
+      - name: 📈 Upload Test Coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 📊 Publish Test Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test-results.xml
+          check_name: Test Results - Python ${{ matrix.python-version }}
+
+      - name: 💾 Save Build Artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.setup.outputs.artifact-name }}-py${{ matrix.python-version }}
+          path: |
+            dist/
+            build/
+            htmlcov/
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # =========================================================================
+  # JOB 3: SCAN DE DÉPENDANCES (SCA - Supply Chain Attack)
+  # =========================================================================
+  dependency-scan:
+    name: Dependency Vulnerability Scan (SCA)
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install Dependencies for Scanning
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔍 Scan with Safety (CVE Check)
+        continue-on-error: true
+        run: |
+          pip install safety
+          echo "🔍 Scanning dependencies for known vulnerabilities (Safety)..."
+          safety check --json > safety-report.json || true
+          cat safety-report.json
+
+      - name: 🔍 Scan with Pip-Audit
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          echo "🔍 Running pip-audit for vulnerable packages..."
+          pip-audit --desc > pip-audit-report.txt || true
+          cat pip-audit-report.txt
+
+      - name: 💾 Save Dependency Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-scan-reports
+          path: |
+            safety-report.json
+            pip-audit-report.txt
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+      - name: ⚠️ Fail if Critical Vulnerabilities Found
+        run: |
+          if grep -q '"vulnerability_count": [1-9]' safety-report.json 2>/dev/null; then
+            echo "❌ CRITICAL: Vulnerabilities found in dependencies!"
+            exit 1
+          fi
+          echo "✅ No critical vulnerabilities detected"
+
+  # =========================================================================
+  # JOB 4: SCAN DE SECRETS (SAST - Secret Exposure Prevention)
+  # =========================================================================
+  secret-scan:
+    name: Secret Detection & Exposure Prevention
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔐 Scan for Exposed Secrets (TruffleHog)
+        continue-on-error: true
+        run: |
+          echo "🔐 Scanning for exposed secrets with TruffleHog..."
+          docker run --rm -v "$GITHUB_WORKSPACE:/workspace" \
+            trufflesecurity/trufflehog:latest \
+            filesystem /workspace \
+            --json > trufflehog-report.json || true
+          cat trufflehog-report.json
+
+      - name: 🔐 Scan for Secrets (detect-secrets)
+        continue-on-error: true
+        run: |
+          pip install detect-secrets
+          echo "🔐 Scanning for common secret patterns..."
+          detect-secrets scan --baseline .secrets.baseline || true
+
+      - name: 🔐 GitLeaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: true
+
+      - name: 💾 Save Secret Scan Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secret-scan-reports
+          path: |
+            trufflehog-report.json
+            .secrets.baseline
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # =========================================================================
+  # JOB 5: ANALYSE DE CODE STATIQUE (SAST - CodeQL)
+  # =========================================================================
+  code-analysis:
+    name: Static Code Analysis (SAST - CodeQL)
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+      - name: 🔍 Additional SAST: Bandit (Security Linter)
+        continue-on-error: true
+        run: |
+          pip install bandit
+          echo "🔍 Running Bandit security linter..."
+          bandit -r . -f json -o bandit-report.json || true
+          bandit -r . -f txt || true
+
+      - name: 💾 Save Code Analysis Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-analysis-reports
+          path: |
+            bandit-report.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # =========================================================================
+  # JOB 6: QUALITÉ DE CODE (SonarQube/Code Quality)
+  # =========================================================================
+  code-quality:
+    name: Code Quality & Metrics
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 📊 Generate Code Metrics (radon)
+        continue-on-error: true
+        run: |
+          pip install radon
+          echo "📊 Analyzing code complexity and maintainability..."
+          radon cc . -a -j > radon-complexity.json || true
+          radon mi . -j > radon-maintainability.json || true
+          cat radon-complexity.json
+
+      - name: 📊 Generate Code Metrics (pylint-json2html)
+        continue-on-error: true
+        run: |
+          pip install pylint
+          pylint --rcfile=.pylintrc src/ --json > pylint-report.json || true
+
+      - name: 💾 Save Quality Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-reports
+          path: |
+            radon-complexity.json
+            radon-maintainability.json
+            pylint-report.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # =========================================================================
+  # JOB 7: VÉRIFICATIONS FINALES ET RAPPORT SYNTHÉTIQUE
+  # =========================================================================
+  security-summary:
+    name: 🔒 Security Summary & Checks
+    runs-on: ubuntu-latest
+    needs: [build-and-test, dependency-scan, secret-scan, code-analysis, code-quality]
+    if: always()
+    permissions:
+      contents: read
+      security-events: write
+      checks: write
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: reports/
+
+      - name: 📊 Generate Security Report
+        run: |
+          echo "========== 🔒 SECURITY SUMMARY REPORT ==========" > security-report.txt
+          echo "Run ID: ${{ github.run_id }}" >> security-report.txt
+          echo "Repository: ${{ github.repository }}" >> security-report.txt
+          echo "Branch: ${{ github.ref }}" >> security-report.txt
+          echo "Commit: ${{ github.sha }}" >> security-report.txt
+          echo "Date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> security-report.txt
+          echo "" >> security-report.txt
+          echo "========== JOB STATUSES ==========" >> security-report.txt
+          echo "✅ Build & Test: ${{ needs.build-and-test.result }}" >> security-report.txt
+          echo "✅ Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-report.txt
+          echo "✅ Secret Scan: ${{ needs.secret-scan.result }}" >> security-report.txt
+          echo "✅ Code Analysis: ${{ needs.code-analysis.result }}" >> security-report.txt
+          echo "✅ Code Quality: ${{ needs.code-quality.result }}" >> security-report.txt
+          echo "" >> security-report.txt
+          echo "========== SCANNED ARTIFACTS ==========" >> security-report.txt
+          find reports/ -type f -name "*.json" -o -name "*.txt" | sort >> security-report.txt || true
+          cat security-report.txt
+
+      - name: 💾 Upload Final Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary-report
+          path: security-report.txt
+          retention-days: 90
+
+      - name: ✅ Validate All Jobs Passed
+        if: |
+          needs.build-and-test.result == 'failure' ||
+          needs.dependency-scan.result == 'failure' ||
+          needs.secret-scan.result == 'failure' ||
+          needs.code-analysis.result == 'failure'
+        run: |
+          echo "❌ Pipeline failed: One or more security/build checks failed"
+          exit 1
+
+  # =========================================================================
+  # JOB 8: NOTIFICATION PAR EMAIL
+  # =========================================================================
+  notify-email:
+    name: 📧 Email Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-test, dependency-scan, secret-scan, code-analysis, security-summary]
+    if: always()
+    steps:
+      - name: 📧 Send Success Email
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: |
+            ✅ [SUCCESS] CI Pipeline - ${{ github.repository }}
+            Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: CI/CD Pipeline <${{ secrets.MAIL_FROM }}>
+          body: |
+            ========== ✅ CI PIPELINE SUCCESS ==========
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Run ID: ${{ github.run_id }}
+            Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            
+            ========== JOB RESULTS ==========
+            ✅ Build & Test: PASSED
+            ✅ Dependency Scan: PASSED
+            ✅ Secret Scan: PASSED
+            ✅ Code Analysis (SAST): PASSED
+            ✅ Code Quality: PASSED
+            
+            ========== LINKS ==========
+            Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit Details: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+            
+            All security checks passed successfully! ✨
+
+      - name: 📧 Send Failure Email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: |
+            ❌ [FAILURE] CI Pipeline - ${{ github.repository }}
+            Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: CI/CD Pipeline <${{ secrets.MAIL_FROM }}>
+          body: |
+            ========== ❌ CI PIPELINE FAILURE ==========
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Run ID: ${{ github.run_id }}
+            Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            
+            ========== JOB RESULTS ==========
+            Build & Test: ${{ needs.build-and-test.result }}
+            Dependency Scan: ${{ needs.dependency-scan.result }}
+            Secret Scan: ${{ needs.secret-scan.result }}
+            Code Analysis (SAST): ${{ needs.code-analysis.result }}
+            Code Quality: ${{ needs.code-quality.result }}
+            
+            ========== INVESTIGATION ==========
+            Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit Details: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+            
+            ⚠️ Please investigate and fix the failing checks.
+            Contact: DevSecOps Team
+
+# ============================================================================
+# FIN DU WORKFLOW
+# ============================================================================

@@ -1,0 +1,90 @@
+# ============================================================================
+# FICHIER: requirements-dev.txt
+# DESCRIPTION: Dépendances de développement (tests, linting, security, etc.)
+# UTILISATION: pip install -r requirements-dev.txt
+# ============================================================================
+
+# ============================================================================
+# TESTING & COVERAGE
+# ============================================================================
+pytest==7.4.3                      # Framework de tests
+pytest-cov==4.1.0                  # Coverage integration
+pytest-xdist==3.5.0                # Tests parallélisés
+pytest-timeout==2.2.0              # Timeout pour tests
+pytest-mock==3.12.0                # Mocking helpers
+pytest-asyncio==0.21.1             # Support async tests
+coverage[toml]==7.3.2              # Coverage reports
+
+# ============================================================================
+# CODE QUALITY & LINTING
+# ============================================================================
+flake8==6.1.0                      # PEP 8 linter
+flake8-bugbear==23.12.2            # Plugins flake8 avancé
+flake8-comprehensions==3.14.0       # Compreh. comprehensions
+flake8-docstrings==1.7.0           # Docstring conventions
+black==23.12.1                     # Code formatter
+isort==5.13.2                      # Import sorter
+pylint==3.0.3                      # Advanced linting
+mypy==1.7.1                        # Type checking
+autopep8==2.0.4                    # Auto-fix PEP 8
+
+# ============================================================================
+# SECURITY SCANNING
+# ============================================================================
+bandit[toml]==1.7.5                # Security linter
+safety==2.3.5                      # CVE checker
+pip-audit==2.6.1                   # Audit dépendances
+detect-secrets==1.4.0              # Secret detection
+semgrep==1.45.0                    # Pattern matching
+
+# ============================================================================
+# CODE METRICS & ANALYSIS
+# ============================================================================
+radon==6.0.1                       # Complexity metrics
+vulture==2.11                      # Dead code finder
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+sphinx==7.2.6                      # Documentation generator
+sphinx-rtd-theme==2.0.0            # ReadTheDocs theme
+sphinx-autodoc-typehints==1.25.2   # Type hints in docs
+
+# ============================================================================
+# DEVELOPMENT TOOLS
+# ============================================================================
+ipython==8.18.1                    # Interactive shell
+ipdb==0.13.13                      # Debugger
+python-dotenv==1.0.0               # .env files
+pre-commit==3.5.0                  # Git hooks
+
+# ============================================================================
+# BUILD & DISTRIBUTION
+# ============================================================================
+build==1.0.3                       # Build backend
+twine==4.0.2                       # Package upload
+wheel==0.42.0                      # Wheel format support
+
+# ============================================================================
+# LINTERS ADDITIONNELS (OPTIONNELS)
+# ============================================================================
+# pylint-json2html==0.9.0          # Pylint reports HTML
+# darglint==1.8.1                  # Docstring checker
+# pydocstyle==6.3.0                # Docstring conventions
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# Installation:
+#   pip install -r requirements-dev.txt
+#
+# Installation avec extras (optionnel):
+#   pip install -r requirements-dev.txt[docs,security]
+#
+# Utilisation recommandée:
+#   pytest                          # Run tests
+#   flake8 src/                     # Check code
+#   black --check .                 # Check formatting
+#   mypy src/                       # Type checking
+#   bandit -r src/                  # Security check
+#   safety check                    # Check vulnerabilities

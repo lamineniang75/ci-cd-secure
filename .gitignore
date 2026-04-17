@@ -1,0 +1,217 @@
+# ============================================================================
+# FICHIER: .gitignore
+# DESCRIPTION: Fichiers et répertoires à ne pas committer (secrets, builds, etc)
+# ============================================================================
+
+# ============================================================================
+# ENVIRONNEMENT & SECRETS
+# ============================================================================
+.env                           # ← IMPORTANT: Fichier local avec secrets
+.env.local
+.env.*.local
+.venv
+venv/
+ENV/
+env/
+.DS_Store
+
+# ============================================================================
+# SECRETS & CREDENTIALS (NE JAMAIS COMMITTER!)
+# ============================================================================
+*.pem                          # Private keys
+*.key
+*.ppk
+*.p8
+*.p12
+*.pfx
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+.ssh/
+secrets.json
+credentials.json
+.credentials
+.api_keys
+
+# ============================================================================
+# CACHE & BUILDS
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================================
+# TESTING & COVERAGE
+# ============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.tox
+.pytest_cache
+pytest_cache/
+test-results.xml
+*.junit.xml
+
+# ============================================================================
+# IDE & EDITORS
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.atom/
+.tern-port
+*.code-workspace
+
+# ============================================================================
+# LINTING & TYPE CHECKING
+# ============================================================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pylint_cache/
+.pylintrc
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+site/
+docs/_build/
+
+# ============================================================================
+# SYSTÈME
+# ============================================================================
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+._*
+.DS_Store
+Thumbs.db
+.directory
+
+# ============================================================================
+# LOGS
+# ============================================================================
+*.log
+logs/
+*.log.gz
+*.log.*
+
+# ============================================================================
+# DONNÉES SENSIBLES
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+.secrets.baseline
+secrets.baseline
+
+# ============================================================================
+# ARTIFACTS DE BUILD CI/CD (optionnel pour git)
+# ============================================================================
+reports/
+.github/workflows/artifacts/
+
+# ============================================================================
+# DÉPENDANCES LOCALES (optionnel)
+# ============================================================================
+# Si vous utilisez pip-tools ou pip-lock
+Pipfile.lock
+
+# ============================================================================
+# FICHIERS TEMPORAIRES
+# ============================================================================
+*.tmp
+*.temp
+*.swp
+*.bak
+
+# ============================================================================
+# FICHIERS MACOS
+# ============================================================================
+.AppleDouble
+.LSOverride
+*.DS_Store
+
+# ============================================================================
+# FICHIERS WINDOWS
+# ============================================================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================================================================
+# VARIABLES D'ENVIRONNEMENT
+# ============================================================================
+.env
+.env.local
+.env.*.local
+
+# ============================================================================
+# NOTES: BONNES PRATIQUES
+# ============================================================================
+# 1. JAMAIS committer :
+#    - Mots de passe
+#    - Clés API
+#    - Tokens d'accès
+#    - Fichiers .env
+#    - Certificats privés
+#
+# 2. Utiliser GitHub Secrets pour l'environnement de build
+#
+# 3. Utiliser .env.example pour montrer la structure
+#    .env.example:
+#    DB_PASSWORD=change_me
+#    API_KEY=change_me
+#
+# 4. Vérifier avant de committer
+#    git diff --cached --name-only
+#    grep -r "password\|api_key\|secret" --include="*.py"
+#
+# 5. Si secret committé accidentellement :
+#    - Rotate la clé IMMÉDIATEMENT
+#    - Utiliser git filter-branch pour l'historique
+#    - Informer l'équipe sécurité
+
+# ============================================================================
+# FICHIERS À AJOUTER DANS .gitignore LOCALEMENT
+# ============================================================================
+# Pour ignorer temporairement:
+# git update-index --skip-worktree <file>
+# Pour arrêter d'ignorer:
+# git update-index --no-skip-worktree <file>
