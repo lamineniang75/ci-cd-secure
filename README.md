@@ -423,3 +423,4 @@ MIT License - voir [LICENSE](./LICENSE) pour détails
 **Mainteneur** : DevSecOps Team
 # test pipeline
 test ci
+trigger pipeline
