@@ -1,11 +1,13 @@
-name: CI Pipeline
+name: CI/CD Secure Pipeline
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  test:
+  build-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +21,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest
+          pip install pytest safety bandit
 
       - name: Run tests
         run: python -m pytest
+
+      - name: Scan dependencies (SCA)
+        run: safety check
+
+      - name: Static code analysis (SAST)
+        run: bandit -r .
+
+  secret-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
