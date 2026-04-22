@@ -88,3 +88,4 @@ wheel==0.42.0                      # Wheel format support
 #   mypy src/                       # Type checking
 #   bandit -r src/                  # Security check
 #   safety check                    # Check vulnerabilities
+django==2.0
